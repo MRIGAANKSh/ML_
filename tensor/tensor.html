@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Detection with TensorFlow.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    video {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <video id="webcam" autoplay playsinline muted width="640" height="480"></video>
+  <canvas id="overlay" width="640" height="480"></canvas>
+
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <!-- BlazeFace model -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
+  <script>
+    let model, webcam, canvas, ctx;
+
+    // Initialize the webcam feed and canvas for drawing
+    async function setupWebcam() {
+      webcam = document.getElementById('webcam');
+      canvas = document.getElementById('overlay');
+      ctx = canvas.getContext('2d');
+
+      // Request webcam access
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      webcam.srcObject = stream;
+
+      return new Promise((resolve) => {
+        webcam.onloadedmetadata = () => {
+          resolve(webcam);
+        };
+      });
+    }
+
+    // Load the BlazeFace model and perform face detection
+    async function runFaceDetection() {
+      model = await blazeface.load();
+
+      const detectFaces = async () => {
+        const predictions = await model.estimateFaces(webcam, false);
+
+        // Clear previous drawings
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (predictions.length > 0) {
+          predictions.forEach((prediction) => {
+            // Get bounding box coordinates
+            const [startX, startY] = prediction.topLeft;
+            const [endX, endY] = prediction.bottomRight;
+            
+            // Draw bounding box
+            ctx.beginPath();
+            ctx.rect(startX, startY, endX - startX, endY - startY);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'green';
+            ctx.stroke();
+          });
+        }
+
+        requestAnimationFrame(detectFaces);
+      };
+
+      detectFaces();
+    }
+
+    // Initialize everything
+    setupWebcam().then(runFaceDetection);
+  </script>
+</body>
+</html>
